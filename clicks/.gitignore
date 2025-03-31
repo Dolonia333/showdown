@@ -1,0 +1,8 @@
+*.tar
+*results*
+*.csv
+*.json
+*.jsonl
+*.txt
+__pycache__
+data/*

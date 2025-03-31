@@ -1,0 +1,27 @@
+[project]
+name = "clicks"
+version = "0.1.0"
+description = "clicks evals"
+requires-python = "==3.12.*"
+dependencies = [
+    "requests>=2.31.0",
+    "pillow>=10.0.0",
+    "tenacity>=8.2.3",
+    "colorama>=0.4.6",
+    "tqdm>=4.66.1",
+    "pandas>=2.0.0",
+    "scipy>=1.11.1",
+    "anthropic>=0.18.1",
+    "openai>=1.66.0",
+    "Pillow>=10.0.0",
+    "matplotlib>=3.7.0",
+    "google-genai>=0.6.0",
+    "generalagents>=0.1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clicks"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
