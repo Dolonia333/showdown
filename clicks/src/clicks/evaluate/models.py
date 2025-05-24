@@ -59,21 +59,7 @@ class EvaluationItem(BaseModel):
   height: Optional[int] = None
 
 
-class EvaluationResult(BaseModel):
-  id: str
-  recording_id: str
-  instruction: str
-  image_path: str
-  gt_x1: Optional[int] = None
-  gt_y1: Optional[int] = None
-  gt_x2: Optional[int] = None
-  gt_y2: Optional[int] = None
-  pred_x: Optional[int] = None
-  pred_y: Optional[int] = None
-  is_in_bbox: Optional[bool] = None
-  latency_seconds: float
-  visualization_path: Optional[str] = None
-  raw_response: Optional[str] = None
+# Moved to base_models.py
 
 
 class ModelConfig(BaseModel):

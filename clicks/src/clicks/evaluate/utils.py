@@ -1,10 +1,11 @@
 import base64
 import os
 import urllib.parse
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-from clicks.evaluate.models import EvaluationMetrics
+from ..base_models import EvaluationResult
+from .models import EvaluationMetrics
 from colorama import Fore, Style, init
 from PIL import Image, ImageDraw, ImageFont
 from scipy import stats
@@ -142,49 +143,71 @@ def print_colored_result(
 
 
 def analyze_results(
-  results: List[Dict[str, Any]], run_id: Optional[str] = None
+    results: List[EvaluationResult], 
+    output_file: Optional[str] = None
 ) -> EvaluationMetrics:
-  if not results:
-    raise ValueError('No results to summarize')
+    """Analyze evaluation results and output metrics.
+    
+    Args:
+        results: List of EvaluationResult objects to analyze
+        output_file: Optional path to save results summary to file
+        
+    Returns:
+        EvaluationMetrics with the analysis results
+    """
+    if not results:
+        raise ValueError('No results to summarize')
 
-  total_processed = len(results)
-  total_in_bbox = sum(1 for result in results if result.get('is_in_bbox', False))
+    total_processed = len(results)
+    
+    def get_is_in_bbox(result: EvaluationResult) -> bool:
+        return result.is_in_bbox if result.is_in_bbox is not None else False
+    
+    total_in_bbox = sum(1 for result in results if get_is_in_bbox(result))
+    bbox_results = np.array([1 if get_is_in_bbox(result) else 0 for result in results])
 
-  bbox_results = np.array(
-    [1 if result.get('is_in_bbox', False) else 0 for result in results if 'is_in_bbox' in result]
-  )
+    accuracy = (total_in_bbox / total_processed) * 100 if total_processed > 0 else 0.0
 
-  accuracy = (total_in_bbox / total_processed) * 100 if total_processed > 0 else None
+    accuracy_ci = None
+    ci = 0.95
 
-  accuracy_ci = None
-  ci = 0.95
+    def calculate_accuracy(data):
+        return np.mean(data) * 100
 
-  def calculate_accuracy(data):
-    return np.mean(data) * 100
+    if len(bbox_results) > 0:
+        try:
+            accuracy_bootstrap = stats.bootstrap(
+                (bbox_results,), calculate_accuracy, confidence_level=ci, method='percentile'
+            )
+            accuracy_ci = accuracy_bootstrap.confidence_interval
+        except Exception as e:
+            print(f'Error calculating bounding box accuracy confidence interval: {e}')
 
-  if len(bbox_results) > 0:
-    try:
-      accuracy_bootstrap = stats.bootstrap(
-        (bbox_results,), calculate_accuracy, confidence_level=ci, method='percentile'
-      )
-      accuracy_ci = accuracy_bootstrap.confidence_interval
-    except Exception as e:
-      print(f'Error calculating bounding box accuracy confidence interval: {e}')
+    # Print summary
+    print('\nResults Summary:')
+    print(f'Total Processed: {total_processed}')
+    print(f'Total Correct: {total_in_bbox}')
+    print(f'Accuracy: {accuracy:.2f}%')
+    if accuracy_ci:
+        print(f'95% CI: [{accuracy_ci.low:.2f}%, {accuracy_ci.high:.2f}%]')
 
-  print('\nResults Summary:')
-  print(f'Total Processed: {total_processed}')
-  print(f'Total Correct: {total_in_bbox}')
-  print(f'Accuracy: {accuracy:.2f}%')
-  if accuracy_ci:
-    print(f'95% CI: [{accuracy_ci.low:.2f}%, {accuracy_ci.high:.2f}%]')
+    # Save to file if specified
+    if output_file:
+        with open(output_file, 'w') as f:
+            f.write('Results Summary:\n')
+            f.write(f'Total Processed: {total_processed}\n')
+            f.write(f'Total Correct: {total_in_bbox}\n')
+            f.write(f'Accuracy: {accuracy:.2f}%\n')
+            if accuracy_ci:
+                f.write(f'95% CI: [{accuracy_ci.low:.2f}%, {accuracy_ci.high:.2f}%]\n')
 
-  metrics = EvaluationMetrics(
-    total_processed=total_processed,
-    total_correct=total_in_bbox,
-    accuracy=accuracy if accuracy is not None else 0,
-    ci=ci,
-    accuracy_ci_low=accuracy_ci.low if accuracy_ci else None,
-    accuracy_ci_high=accuracy_ci.high if accuracy_ci else None,
-  )
+    metrics = EvaluationMetrics(
+        total_processed=total_processed,
+        total_correct=total_in_bbox,
+        accuracy=accuracy,
+        ci=ci,
+        accuracy_ci_low=accuracy_ci.low if accuracy_ci else None,
+        accuracy_ci_high=accuracy_ci.high if accuracy_ci else None,
+    )
 
-  return metrics
+    return metrics

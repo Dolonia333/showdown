@@ -58,9 +58,10 @@ class AceAPIClient(AbstractAPIClient):
         return ParsedPrediction(
           x=x,
           y=y,
-          raw_response=ace_prediction.raw_response or ""
+          raw_response=ace_prediction.raw_response
         )
     raise ValueError("No valid coordinates found in prediction")
+
   def process_single_item(
     self,
     item: Dict[str, Any],
@@ -80,48 +81,44 @@ class AceAPIClient(AbstractAPIClient):
       prediction = self.predict_ace(image, eval_item.instruction)
       latency = time.time() - start_time
 
-      if prediction is None or not isinstance(prediction, ParsedPrediction):
-        raise ValueError("Invalid prediction returned")
+      x = prediction.x
+      y = prediction.y
 
-      gt_x1 = int(eval_item.x1) if eval_item.x1 is not None else 0
-      gt_y1 = int(eval_item.y1) if eval_item.y1 is not None else 0
-      gt_x2 = int(eval_item.x2) if eval_item.x2 is not None else image.width
-      gt_y2 = int(eval_item.y2) if eval_item.y2 is not None else image.height
+      gt_x1 = eval_item.x1
+      gt_y1 = eval_item.y1
+      gt_x2 = eval_item.x2
+      gt_y2 = eval_item.y2
 
-      is_in_bbox = check_prediction_in_bbox(prediction.x, prediction.y, gt_x1, gt_y1, gt_x2, gt_y2)
+      is_in_bbox = check_prediction_in_bbox(x, y, gt_x1, gt_y1, gt_x2, gt_y2)
 
       visualization_path = visualize_prediction(
-        image_path=local_path,
-        pred_x=prediction.x,
-        pred_y=prediction.y,
-        item_id=str(eval_item.id),
-        recording_id=str(eval_item.id),  # using item_id as recording_id
-        instruction=eval_item.instruction,
-        model_name=str(self.config.model),
-        run_id=str(run_id) if run_id else None,
-        gt_x1=int(gt_x1) if gt_x1 is not None else None,
-        gt_y1=int(gt_y1) if gt_y1 is not None else None,
-        gt_x2=int(gt_x2) if gt_x2 is not None else None,
-        gt_y2=int(gt_y2) if gt_y2 is not None else None,
-        is_in_bbox=is_in_bbox
-      )
-      # If you have an integer run_id, convert it to string before passing to visualize_prediction
-      # Example:
-      # run_id_int = 123
-      # visualization_path = visualize_prediction(..., run_id=str(run_id_int), ...)
-      print_colored_result(
-        str(eval_item.id),
+        local_path,
+        x,
+        y,
+        eval_item.id,
         eval_item.instruction,
-        prediction.x,
-        prediction.y,
+        self.config.model,
+        run_id,
+        gt_x1,
+        gt_y1,
+        gt_x2,
+        gt_y2,
+        is_in_bbox,
+      )
+
+      print_colored_result(
+        eval_item.id,
+        eval_item.instruction,
+        x,
+        y,
         latency,
         is_in_bbox,
       )
 
       result = EvaluationResult(
-        id=str(eval_item.id),
-        instruction=str(eval_item.instruction),
-        image_path=str(local_path),
+        id=eval_item.id,
+        instruction=eval_item.instruction,
+        image_path=local_path,
         gt_x1=gt_x1,
         gt_y1=gt_y1,
         gt_x2=gt_x2,

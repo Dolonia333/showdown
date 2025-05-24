@@ -26,30 +26,22 @@ The episodes range from tens of seconds to minutes, and screenshots are between 
 
 ## `showdown-clicks-dev` Results
 
-| Model                                                | Accuracy      | 95% CI              | Latency [^1] | 95% CI                  |
-|------------------------------------------------------|---------------|---------------------|--------------|-------------------------|
-| `ace-control-medium`                                         | **77.56%**    | +3.41%/-3.59%       | 533ms        | +8ms/-7ms               |
-| `ace-control-small`                                          | 72.89%        | +3.59%/-3.77%       | **324ms**    | +7ms/-7ms               |
-| Operator (OpenAI CUA, macOS)                         | 64.27%        | +3.95%/-3.95%       | 6385ms       | +182ms/-177ms           |
-| Molmo-72B-0924                                       | 54.76%        | +4.13%/-4.13%       | 6599ms       | +113ms/-114ms           |
-| Claude 3.7 Sonnet (Thinking, Computer Use)           | 53.68%        | +4.13%/-4.13%       | 9656ms       | +95ms/-97ms             |
-| UI-TARS-72B-SFT                                      | 54.4%         | +4.13%/-4.13%       | 1977ms       | +15ms/-16ms             |
-| OmniParser V2 + GPT-4o                               | 51.71%        | +4.12%/-4.13%       | 12642ms      | +361ms/-349ms           |
-| Gemini 2.0 Flash                                     | 33.39%        | +3.95%/-3.95%       | 3069ms       | +16ms/-16ms             |
-| Qwen2.5-VL-72B-Instruct                              | 24.78%        | +3.59%/-3.60%       | 3790ms       | +57ms/-55ms             |
-| GPT-4o                                               | 5.21%         | +1.97%/-1.80%       | 2500ms       | +49ms/-48ms             |
+| Model                         | Accuracy      | 95% CI              | Latency [^1] |
+|------------------------------|---------------|---------------------|--------------|
+| Claude-3-Opus (OpenRouter)   | -             | -                   | -            |
+| Dolphin Mixtral (Local)      | -             | -                   | -            |
+| DeepSeek R1 14B (Local)      | -             | -                   | -            |
 
 ### Run evals
 ```bash
-uv run eval.py --model ace --dataset dev --num-workers 1 --run-id showdown-clicks-dev
-uv run eval.py --model claude --dataset dev --num-workers 16 --run-id showdown-clicks-dev
-uv run eval.py --model qwen --dataset dev --num-workers 3 --run-id showdown-clicks-dev
-uv run eval.py --model gemini --dataset dev --num-workers 16 --run-id showdown-clicks-dev
-uv run eval.py --model openai --dataset dev --num-workers 16 --run-id showdown-clicks-dev
-uv run eval.py --model openai-cua --dataset dev --num-workers 16 --run-id showdown-clicks-dev
-uv run eval.py --model molmo --dataset dev --num-workers 2 --run-id showdown-clicks-dev --api-url $YOUR_MOLMO_MODAL_API
-uv run eval.py --model ui-tars --dataset dev --run-id showdown-clicks-dev --api-url $YOUR_UITARS_MODAL_API --api-key $YOUR_UITARS_API_KEY --num-workers 1 --ui-tars-model bytedance-research/UI-TARS-72B-SFT
-uv run eval.py --model omniparser --dataset dev --run-id showdown-clicks-dev --omniparser-model gpt-4o-2024-05-13 --api-url $YOUR_OMNIPARSER_MODAL_API  --num-workers 4
+# OpenRouter API Models (requires OPENROUTER_API_KEY)
+uv run eval.py --model openrouter --dataset dev --openrouter-model anthropic/claude-3-opus
+
+# Local Dolphin Mixtral model (requires Ollama with dolphin-mixtral model)
+uv run eval.py --model dolphin --dataset dev 
+
+# Local DeepSeek model (requires Ollama with deepseek-r1:14b model)
+uv run eval.py --model deepseek --dataset dev
 ```
 
 When you are done with the evals, go to Modal's UI and terminate the individual apps.
@@ -87,6 +79,55 @@ The project is organized as follows:
     - `qwen/`: Qwen model integration
     - `ui_tars/`: UI-TARS model integration
 
+## Setup
+
+1. Install dependencies:
+```bash
+uv pip install -e .
+```
+
+2. Choose your evaluation method:
+
+### OpenRouter API Models
+1. Get an API key from [OpenRouter](https://openrouter.ai)
+2. Set your API key:
+```bash
+export OPENROUTER_API_KEY=your_key_here
+```
+
+### Local Models via Ollama
+1. Install [Ollama](https://ollama.ai)
+2. Pull the required models:
+```bash
+# For Dolphin Mixtral
+ollama pull dolphin-mixtral
+
+# For DeepSeek
+ollama pull deepseek-r1:14b
+```
+
+## Running Evaluations
+
+1. Extract the dataset:
+```bash
+cd data/
+tar -xf frames.tar
+```
+
+2. Run evaluations using one of:
+```bash
+# OpenRouter API Models
+uv run eval.py --model openrouter --dataset dev --openrouter-model anthropic/claude-3-opus
+
+# Local Dolphin Mixtral
+uv run eval.py --model dolphin --dataset dev
+
+# Local DeepSeek
+uv run eval.py --model deepseek --dataset dev
+```
+
+Results will be saved in the `results/` directory.
+
 ## Usage
 
 To run the evaluation, use the `eval.py` script:
@@ -107,6 +148,28 @@ uv run eval.py --num-workers 4
 # Run with a custom output file
 uv run eval.py --output-file results/custom_results.csv
 ```
+
+To run multi-model evaluation:
+```bash
+uv run multi_model_eval.py
+```
+
+To run voice evaluation:
+```bash
+uv run voice_eval.py
+```
+
+Requirements for voice_eval.py:
+```bash
+pip install SpeechRecognition pyaudio pyttsx3
+```
+
+Prompts should be in prompts.json in the same directory.
+Results will be saved to results.json.
+
+For OpenRouter, set OPENROUTER_API_KEY in your .env file or environment variables.
+
+Local models must be running and accessible at the specified endpoints.
 
 ### Model-specific options
 
